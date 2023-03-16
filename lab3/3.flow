@@ -1,0 +1,28 @@
+import string;
+
+fib (n:int)->[int] {
+if (n == 0)         [0]
+    else if (n == 1)    [0, 1]
+    else {
+        prev = fib(n - 1);
+        concat(prev, [prev[n - 2] + prev[n - 1]]);
+    }
+}
+
+
+fibTailHelper(n : int, res : [int]) -> [int] {
+    if (n == 2) res
+    else fibTailHelper(n - 1, concat(res, [res[length(res) - 1] + res[length(res) - 2]]))
+}
+
+fibTail(n : int) -> [int] {
+    if (n <= 0) []
+    else if (n == 1) [0]
+    else fibTailHelper(n, [0, 1])
+}
+
+main() {
+    println(fib(10));
+    println(fibTail(11));
+    quit(0);
+}

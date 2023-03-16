@@ -1,0 +1,15 @@
+expr = ws sub:left ws "+" ws expr:right ws {Add(:left, :right)} | sub;
+
+sub = ws mul:left ws nextsub*:right ws {buildSub(:left, :right)};
+nextsub = ws "-" ws mul:t ws {:t};
+
+mul = ws div:left ws "*" ws mul:right ws {Mul(:left, :right)} | div;
+
+div = ws neg:left ws nextdiv*:right ws {buildDiv(:left, :right)};
+nextdiv =  ws "/" ws neg:t ws {:t};
+
+neg = ws "-" ws neg:left ws {Neg(:left)} | ws term:left ws {:left};
+term =  ws "(" ws expr:e ws ")" ws {:e} | ws int | ws var; 
+int = ('0'-'9')+ $d {IntConst(s2i($d))};
+var = ('a'-'z')+$d {Var($d)};
+ws = (' ' | '\r' | '\n' | '\t')*;

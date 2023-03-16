@@ -1,0 +1,46 @@
+import string;
+import lingo/peg;
+import lingo/pegcode/driver;
+
+lingoGrammarOp = compilePegGrammar("#include 5.lingo");
+
+IntConst : (value : int);
+Mul : (left : Expr, right : Expr);
+Add : (left : Expr, right : Expr);
+Expr ::= IntConst, Mul, Add;
+
+Str(e : Expr) -> string {
+    switch (e) {
+        IntConst(c) : {i2s(c)}
+        Mul(l, r) : {"(" + Str(l) + " * " + Str(r) + ")"}
+        Add(l, r) : {"(" + Str(l) + " + " + Str(r) + ")"}
+    }
+}
+
+Val(e: Expr) -> int {
+    switch (e) {
+        IntConst(c) : {c}
+        Mul(l, r) : {Val(l) * Val(r)}
+        Add(l, r) : {Val(l) + Val(r)}
+    }
+}
+
+Parse(s : string) -> Expr {
+    parsic(lingoGrammarOp, s, defaultPegActions);
+}
+
+main() {
+    expr2 = Mul(Add(IntConst(2), IntConst(3)), IntConst(10));  //(2 + 3) * 10
+    expr3 = Add(Mul(IntConst(2), IntConst(3)), IntConst(10)); //(2 * 3) + 10
+
+    println(Str(expr2));
+    println(Str(expr3));
+    println(Val(expr2));
+    println(Val(expr3));
+
+    result = Parse("2+3*5+1*6*2");
+    
+    println(Str(result));
+    println(Val(result));
+    quit(0);
+}

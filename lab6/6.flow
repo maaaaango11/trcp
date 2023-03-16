@@ -1,0 +1,42 @@
+import string;
+import lingo/peg;
+import lingo/pegcode/driver;
+
+lingoGrammarOp : ref Maybe<[PegOp]> = ref None();
+
+lingoGrammar() {
+    onlyOnce(lingoGrammarOp, \ -> {
+        compilePegGrammar("#include 6.lingo");
+    });
+}
+
+
+Expr ::= IntConst, Mul, Add;
+Add();
+Mul();
+IntConst : (value : int);
+
+Calc(e : [Expr]) -> int {
+    rpn = foldi(e, ref[], \i, stack, expr_i -> {
+        switch(expr_i){
+            Add(): refArrayPush(stack, Pop(stack) + Pop(stack));
+            Mul(): refArrayPush(stack, Pop(stack) * Pop(stack));
+            IntConst(num): refArrayPush(stack, num);
+        }
+        stack;
+    });
+    Pop(rpn);
+}
+
+
+Pop(stack: ref [int]) -> int {
+    top: int = lastElement(^stack, 0);
+    stack := subrange(^stack, 0, length(^stack)-1);
+    top;
+}
+
+main() {
+    result: string = "1 2 + 3 + 4 *"; 
+    println(i2s(Calc(parsic(lingoGrammar(), result, defaultPegActions))));
+    quit(0);
+}

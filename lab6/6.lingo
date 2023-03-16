@@ -1,0 +1,5 @@
+expr = (mul | add | int)+;
+add = ws "+" ws {Add()};
+mul = ws "*" ws {Mul()};
+int = ws ('0'-'9')+$d {IntConst(s2i($d))};
+ws = (' ' | '\r' | '\n' | '\t')*;

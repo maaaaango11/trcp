@@ -1,0 +1,11 @@
+import string;
+
+s(source:[int])->int {
+    fold(source, 0, \sum, x -> sum + x);
+}
+
+main() {
+    ints = [1, 2, 3, 4, 5];
+    println(s(ints));
+    quit(0);
+}

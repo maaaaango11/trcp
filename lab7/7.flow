@@ -1,0 +1,153 @@
+import string;
+import lingo/peg;
+import lingo/pegcode/driver;
+
+lingoGrammarOp = compilePegGrammar("#include 8.lingo");
+
+Expr ::= IntConst, Mul, Add, Sub, Div, Neg, Var;
+IntConst : (value : int);
+Add : (left : Expr, right : Expr);
+Sub : (left : Expr, right : Expr);
+Mul : (left : Expr, right : Expr);
+Div : (left : Expr, right : Expr);
+Neg : (arg : Expr);
+Var : (name : string);
+buildSub(xs: [flow]){
+    fold(xs[1], xs[0], \acc, x -> Sub(acc, x))
+}
+buildDiv(xs: [flow]){
+    fold(xs[1], xs[0], \acc, x -> Div(acc, x))
+}
+
+Rational(n : int, d : int);
+
+i2rat(a : int) -> Rational {
+    Rational(a, 1);
+}
+
+rat2s(e : Maybe<Rational>) -> string {
+    switch(e){
+        Some(r):{
+            if (r.d == 1) {i2s(r.n);}
+            else if (r.d == 0) {"inf";}
+            else i2s(r.n) + "/" + i2s(r.d);
+        }
+        None(): "syntax error";  
+    }
+}
+
+simplify(r : Rational) -> Rational {
+    g = gcd(r.n, r.d);
+    Rational(r.n / g, r.d / g);
+}
+
+addRat(l : Rational, r : Rational) -> Rational {
+    Rational(l.n * r.d + r.n * l.d, l.d * r.d);
+}
+
+subRat(l : Rational, r : Rational) -> Rational {
+    Rational(l.n * r.d - r.n * l.d, l.d * r.d);
+}
+
+mulRat(l : Rational, r : Rational) -> Rational {
+    Rational(l.n * r.n, l.d * r.d);
+}
+
+divRat(l : Rational, r : Rational) -> Rational {
+    Rational(l.n * r.d, l.d * r.n);
+}
+
+negRat(arg : Rational) {
+    Rational(-arg.n, arg.d);
+}
+
+Str(e : Expr) -> string {
+    switch (e) {
+        IntConst(c) : {i2s(c)}
+        Mul(l, r) : {"(" + Str(l) + " * " + Str(r) + ")"}
+        Add(l, r) : {"(" + Str(l) + " + " + Str(r) + ")"}
+        Sub(l, r) : {"(" + Str(l) + " - " + Str(r) + ")"}
+        Div(l, r) : {Str(l) + " / " + Str(r)}
+        Neg(arg) : {"-" + Str(arg)}
+        Var(x) : {x}
+    }
+}
+
+Val(e: Expr, vars : Tree<string, int>) -> Maybe<Rational> {
+    switch (e) {
+        IntConst(c) : {Some(i2rat(c))}
+        Mul(l, r) : {
+            switch(Val(l, vars)){ //maybeMap2
+                Some(val1):{
+                    val2 = Val(r, vars);
+                    val2 ?? Some(simplify(mulRat(val1, val2))) : None();
+                }
+                None(): None();
+            }
+            //simplify(mulRat(Val(l, vars), Val(r, vars)))
+        }
+        Add(l, r) : {
+            switch(Val(l, vars)){
+                Some(val1):{
+                    val2 = Val(r, vars);
+                    val2 ?? Some(simplify(addRat(val1, val2))) : None();
+                }
+                None(): None();
+            }
+            //simplify(addRat(Val(l, vars), Val(r, vars)))
+        }
+        Sub(l, r) : {
+            switch(Val(l, vars)){
+                Some(val1):{
+                    val2  = Val(r, vars);
+                    val2 ?? Some(simplify(subRat(val1, val2))) : None();
+                }
+                None(): None();
+            }
+            //simplify(subRat(Val(l, vars), Val(r, vars)))
+        }
+        Div(l, r) : {
+            switch(Val(l, vars)){
+                Some(val1):{
+                    val2 = Val(r, vars);
+                    val2 ?? Some(simplify(divRat(val1, val2))) : None();
+                }
+                None(): None();
+            }
+            //simplify(divRat(Val(l, vars), Val(r, vars)))
+        }
+
+        //default: None();
+        Neg(arg) : {
+                    val1 = Val(arg, vars);
+                    val1 ?? Some(negRat(val1)) : None();
+            //negRat(Val(arg, vars))
+        }
+        Var(name) : {
+            x = switch(lookupTree(vars, name)) {
+                None() : None(); 
+                Some(val) : {Some(i2rat(val))}
+            };
+            x;
+        }
+    }
+}
+
+Parse(s : string) -> Expr {
+    divAction = setTree(defaultPegActions.t, "buildDiv", buildDiv);
+    subAction = setTree(divAction, "buildSub", buildSub);
+    actions= SemanticActions(subAction);
+    parsic(lingoGrammarOp, s, actions);
+}
+
+main() {
+    vars = [Pair("x", 2), Pair("y", 3)];
+    varsTree = setTreeValues(TreeEmpty(), vars);
+
+    result = Parse("(-x + z - 2) / (5 * 6)");
+    //result = Parse("-10 / x");
+    //println(Str(result));
+    println(rat2s(Val(result, varsTree)));
+
+    quit(0);
+}
